@@ -1,0 +1,8 @@
+Company Policy - Remote Work and Security
+
+Employees may work remotely up to three days per week with manager approval.
+All laptops must use full-disk encryption and auto-lock after 10 minutes.
+Company data may only be stored in approved systems.
+Sensitive customer data must not be copied to personal devices.
+Employees must complete security awareness training once per quarter.
+Reported incidents should be sent to security@example.local within 24 hours.

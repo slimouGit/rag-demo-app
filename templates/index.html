@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Flask RAG mit Ollama</title>
+
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap");
+
+        :root {
+            --bg: #eef1f6;
+            --surface: #ffffff;
+            --surface-soft: #f8f9fc;
+            --stroke: #d8deea;
+            --text: #1a2233;
+            --muted: #5c667a;
+            --primary: #1164e0;
+            --primary-soft: #eaf2ff;
+            --success: #0f9d58;
+            --danger: #d63638;
+            --radius: 0;
+            --shadow: none;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Manrope", "Segoe UI", "Helvetica Neue", sans-serif;
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 16px;
+            line-height: 1.5;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, #f8fbff 0%, transparent 45%),
+                radial-gradient(circle at top right, #f3f7ff 0%, transparent 40%),
+                var(--bg);
+        }
+
+        h1,
+        h2 {
+            margin: 0;
+            color: var(--text);
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        label {
+            display: block;
+            margin-top: 16px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        input,
+        textarea,
+        select,
+        button {
+            width: 100%;
+            margin-top: 6px;
+            font: inherit;
+        }
+
+        input,
+        textarea,
+        select {
+            border: 1px solid var(--stroke);
+            border-radius: 0;
+            background: var(--surface);
+            padding: 10px 12px;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.15s ease;
+        }
+
+        .multi-select {
+            position: relative;
+            margin-top: 6px;
+        }
+
+        .multi-select-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border: 1px solid var(--stroke);
+            border-radius: 0;
+            background: var(--surface);
+            padding: 10px 12px;
+            color: var(--text);
+            cursor: pointer;
+            width: 100%;
+            font: inherit;
+            text-align: left;
+        }
+
+        .multi-select-toggle::after {
+            content: "▾";
+            color: var(--muted);
+        }
+
+        .multi-select.is-open .multi-select-toggle::after {
+            content: "▴";
+        }
+
+        .multi-select-panel {
+            display: none;
+            position: absolute;
+            z-index: 20;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            max-height: 240px;
+            overflow-y: auto;
+            border: 1px solid var(--stroke);
+            background: var(--surface);
+            padding: 8px;
+            box-shadow: 0 10px 30px rgba(26, 34, 51, 0.08);
+        }
+
+        .multi-select.is-open .multi-select-panel {
+            display: grid;
+            gap: 4px;
+        }
+
+        .multi-select-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+            padding: 8px 10px;
+            border: 1px solid transparent;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .multi-select-option:hover {
+            background: var(--surface-soft);
+            border-color: var(--stroke);
+        }
+
+        .multi-select-option input {
+            width: auto;
+            margin: 0;
+            accent-color: var(--primary);
+        }
+
+        .multi-select-hint {
+            margin-top: 6px;
+            font-size: 0.84rem;
+            color: var(--muted);
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            border: none;
+            border-radius: 0;
+            margin-top: 16px;
+            padding: 10px 14px;
+            background: var(--primary);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--stroke);
+            border-radius: 0;
+            overflow: hidden;
+            background: var(--surface);
+        }
+
+        th {
+            background: var(--surface-soft);
+            text-align: left;
+            font-size: 0.86rem;
+            color: var(--muted);
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border-bottom: 1px solid var(--stroke);
+            vertical-align: top;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .box {
+            margin-top: 16px;
+            border: 1px solid var(--stroke);
+            border-radius: var(--radius);
+            background: var(--surface);
+            padding: 18px;
+            box-shadow: var(--shadow);
+        }
+
+        .app-header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 4px 0 10px;
+        }
+
+        .header-inner {
+            border: 1px solid var(--stroke);
+            border-radius: 0;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .header-nav {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            align-items: stretch;
+            margin-bottom: 12px;
+        }
+
+        .nav-pill {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            border: 1px solid var(--stroke);
+            border-radius: 0;
+            padding: 6px 12px;
+            background: var(--surface-soft);
+            font-size: 0.9rem;
+        }
+
+        .model-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            align-items: start;
+        }
+
+        .model-form {
+            background: var(--surface-soft);
+            border: 1px solid #d5e1f9;
+            border-radius: 0;
+            padding: 12px;
+        }
+
+        .ingest-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            align-items: start;
+            margin-top: 12px;
+        }
+
+        .ingest-form {
+            background: var(--surface-soft);
+            border: 1px solid #d5e1f9;
+            border-radius: 0;
+            padding: 12px;
+        }
+
+        .ingest-form label {
+            margin-top: 0;
+        }
+
+        .question-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            align-items: start;
+            margin-top: 12px;
+        }
+
+        .question-form {
+            background: var(--surface-soft);
+            border: 1px solid #d5e1f9;
+            border-radius: 0;
+            padding: 12px;
+        }
+
+        .question-form label {
+            margin-top: 0;
+        }
+
+        .model-form label {
+            margin-top: 0;
+        }
+
+        .model-error {
+            margin: 0 0 10px;
+        }
+
+        .content {
+            padding-top: 8px;
+        }
+
+        .model {
+            margin-top: 0;
+            background: linear-gradient(180deg, #f6f9ff 0%, #fafdff 100%);
+        }
+
+        .success {
+            border-color: #b9e8cf;
+            background: #ecfbf2;
+        }
+
+        .error {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .box.error {
+            border-color: #f0c0c1;
+            background: #fff3f3;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            margin: 8px 0 0;
+            border-radius: 0;
+            background: #f6f8fc;
+            padding: 12px;
+            border: 1px solid var(--stroke);
+            overflow-x: auto;
+            font-size: 0.93rem;
+        }
+
+        .chunk {
+            margin-top: 12px;
+            padding: 12px;
+            border: 1px solid var(--stroke);
+            border-radius: 0;
+            background: var(--surface);
+        }
+
+        .inline-form {
+            display: inline;
+        }
+
+        .small-button {
+            width: auto;
+            padding: 7px 10px;
+            margin-top: 0;
+            margin-left: 6px;
+            box-shadow: none;
+            background: #e95151;
+        }
+
+        .small-button:hover {
+            box-shadow: none;
+            background: #d94848;
+        }
+
+        .section-divider {
+            margin: 20px 0;
+            border: 0;
+            border-top: 1px solid var(--stroke);
+        }
+
+        @media (max-width: 760px) {
+            body {
+                padding: 10px;
+            }
+
+            .model-grid,
+            .ingest-grid,
+            .question-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header-nav {
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<header class="app-header">
+    <div class="header-inner">
+        <nav class="header-nav" aria-label="Hauptnavigation">
+            <a href="/" class="nav-pill">RAG-Anwendung</a>
+            <a href="/db" class="nav-pill">SQL-Lite-DB</a>
+        </nav>
+
+        <div class="box model">
+            <h2>Ollama-Modelle</h2>
+
+            {% if model_error %}
+                <p class="error model-error">{{ model_error }}</p>
+            {% endif %}
+
+            <div class="model-grid">
+                <form action="/set-chat-model" method="post" class="model-form">
+                    <label for="chat_model">Chat-Modell (Antwortgenerierung)</label>
+                    <select id="chat_model" name="chat_model">
+                        {% for m in chat_models %}
+                            <option value="{{ m }}" {% if m == chat_model %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit">Übernehmen</button>
+                </form>
+
+                <form action="/set-embedding-model" method="post" class="model-form">
+                    <label for="embedding_model">Embedding-Modell (Indexierung &amp; Suche)</label>
+                    <select id="embedding_model" name="embedding_model">
+                        {% for m in embedding_models %}
+                            <option value="{{ m }}" {% if m == embedding_model %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit">Übernehmen</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="content">
+
+{% if message %}
+    <div class="box success">
+        <p>{{ message }}</p>
+    </div>
+{% endif %}
+
+{% if error %}
+    <div class="box error">
+        <p>{{ error }}</p>
+    </div>
+{% endif %}
+
+{% if db_overview is none %}
+    <div class="box">
+        <h2>1. Dokument hochladen und indexieren</h2>
+
+        <div class="ingest-grid">
+            <form action="/upload" method="post" enctype="multipart/form-data" class="ingest-form">
+                <label for="file">Dokument hochladen (.txt oder .pdf)</label>
+                <input id="file" name="file" type="file" accept=".txt,.pdf" required>
+
+                <button type="submit">Dokument indexieren</button>
+            </form>
+
+            <form action="/ingest-url" method="post" class="ingest-form">
+                <label for="url">Oder Internetseite per URL indexieren</label>
+                <input id="url"
+                       name="url"
+                       type="url"
+                       placeholder="https://example.com/artikel"
+                       required>
+
+                <button type="submit">URL indexieren</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="box">
+        <h2>2. Frage zum Dokument stellen</h2>
+
+        <form action="/ask" method="post">
+            <div class="question-grid">
+                <div class="question-form">
+                    <label>Indexierte Dokumente</label>
+                    <div class="multi-select" data-multi-select>
+                        <button type="button" class="multi-select-toggle" data-multi-select-toggle>
+                            <span data-multi-select-label>Bitte mindestens ein Dokument auswählen</span>
+                        </button>
+
+                        <div class="multi-select-panel" data-multi-select-panel>
+                            {% for document in documents %}
+                                <label class="multi-select-option">
+                                    <input type="checkbox"
+                                           name="document_names"
+                                           value="{{ document }}"
+                                           {% if document in selected_documents %}checked{% endif %}>
+                                    <span>{{ document }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <p class="multi-select-hint">Mehrere Dokumente können gleichzeitig ausgewählt werden.</p>
+                </div>
+
+                <div class="question-form">
+                    <label for="question">Frage</label>
+                    <textarea id="question"
+                              name="question"
+                              rows="4"
+                              required
+                              placeholder="Welche Kernaussage enthält das Dokument?">{{ question or "" }}</textarea>
+
+                    <button type="submit">Frage stellen</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if answer %}
+        <div class="box">
+            <h2>Antwort</h2>
+            <pre>{{ answer }}</pre>
+        </div>
+    {% endif %}
+
+    {% if chunks %}
+        <div class="box">
+            <h2>Verwendete Chunks</h2>
+
+            {% for chunk in chunks %}
+                <div class="chunk">
+                    <p>
+                        <strong>Dokument:</strong> {{ chunk.document_name }} |
+                        <strong>Chunk #</strong>{{ chunk.chunk_id if chunk.chunk_id is not none else chunk.chunk_index }} |
+                        <strong>Score:</strong> {{ "%.4f"|format(chunk.score) }}
+                    </p>
+                    <pre>{{ chunk.content }}</pre>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endif %}
+
+{% if db_overview is not none %}
+    <div class="box">
+        <h2>SQL-Lite-DB</h2>
+
+        {% if not db_overview %}
+            <p>Die Datenbank enthält noch keine indexierten Dokumente.</p>
+        {% endif %}
+
+        {% if db_overview %}
+            <table border="1" cellpadding="8" cellspacing="0" width="100%">
+                <thead>
+                <tr>
+                    <th>Dokument</th>
+                    <th>Chunks</th>
+                    <th>Erste ID</th>
+                    <th>Letzte ID</th>
+                    <th>Aktionen</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in db_overview %}
+                    <tr>
+                        <td>{{ row.document_name }}</td>
+                        <td>{{ row.chunk_count }}</td>
+                        <td>{{ row.first_chunk_id }}</td>
+                        <td>{{ row.last_chunk_id }}</td>
+                        <td>
+                            <a href="/db?document_name={{ row.document_name | urlencode }}">
+                                Chunks anzeigen
+                            </a>
+
+                            <form action="/db/delete-document"
+                                  method="post"
+                                  class="inline-form"
+                                  onsubmit="return confirm('Dokument wirklich aus der DB löschen?');">
+                                <input type="hidden" name="document_name" value="{{ row.document_name }}">
+                                <button type="submit" class="small-button">
+                                    Löschen
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+
+    {% if db_chunks %}
+        <div class="box">
+            <h2>Chunks für {{ db_selected_document }}</h2>
+
+            {% for chunk in db_chunks %}
+                <div class="chunk">
+                    <p>
+                        <strong>ID:</strong> {{ chunk.id }} |
+                        <strong>Index:</strong> {{ chunk.chunk_index }}
+                    </p>
+
+                    <pre>{{ chunk.content }}</pre>
+
+                    <p><strong>Embedding-Vorschau:</strong></p>
+                    <pre>{{ chunk.embedding_preview }}</pre>
+
+                    <form action="/db/delete-chunk"
+                          method="post"
+                          onsubmit="return confirm('Chunk wirklich löschen?');">
+                        <input type="hidden" name="chunk_id" value="{{ chunk.id }}">
+                        <input type="hidden" name="document_name" value="{{ db_selected_document }}">
+                        <button type="submit">Chunk löschen</button>
+                    </form>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endif %}
+
+</main>
+
+<script>
+    document.querySelectorAll("[data-multi-select]").forEach((multiSelect) => {
+        const toggle = multiSelect.querySelector("[data-multi-select-toggle]");
+        const label = multiSelect.querySelector("[data-multi-select-label]");
+        const panel = multiSelect.querySelector("[data-multi-select-panel]");
+        const checkboxes = Array.from(multiSelect.querySelectorAll('input[type="checkbox"]'));
+        const form = multiSelect.closest("form");
+
+        const updateLabel = () => {
+            const selected = checkboxes.filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.nextElementSibling.textContent.trim());
+
+            if (selected.length === 0) {
+                label.textContent = "Bitte mindestens ein Dokument auswählen";
+            } else if (selected.length === 1) {
+                label.textContent = selected[0];
+            } else {
+                label.textContent = `${selected.length} Dokumente ausgewählt`;
+            }
+        };
+
+        const closePanel = () => {
+            multiSelect.classList.remove("is-open");
+            toggle.setAttribute("aria-expanded", "false");
+        };
+
+        toggle.addEventListener("click", () => {
+            const willOpen = !multiSelect.classList.contains("is-open");
+            multiSelect.classList.toggle("is-open", willOpen);
+            toggle.setAttribute("aria-expanded", String(willOpen));
+        });
+
+        checkboxes.forEach((checkbox) => {
+            checkbox.addEventListener("change", updateLabel);
+        });
+
+        if (form) {
+            form.addEventListener("submit", (event) => {
+                if (checkboxes.filter((checkbox) => checkbox.checked).length === 0) {
+                    event.preventDefault();
+                    label.textContent = "Bitte mindestens ein Dokument auswählen";
+                }
+            });
+        }
+
+        document.addEventListener("click", (event) => {
+            if (!multiSelect.contains(event.target)) {
+                closePanel();
+            }
+        });
+
+        updateLabel();
+    });
+</script>
+
+</body>
+</html>

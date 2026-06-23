@@ -1,0 +1,10 @@
+Flask==3.0.3
+Werkzeug==3.0.3
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.8.2
+requests==2.32.3
+pypdf==4.3.1
+python-dotenv==1.0.1
+black==24.8.0
+pytest==8.3.2
