@@ -1,191 +1,265 @@
-# Local RAG Demo App
+# Local LLM RAG Demo App
 
-A local demo project that shows the core workflow of Retrieval-Augmented Generation (RAG) with Flask/FastAPI, SQLite, and Ollama.
+A local AI Engineering demo app that ingests TXT/PDF files or public URLs, chunks and embeds the text, stores the results in SQLite, and answers questions with a local Ollama-backed model.
 
-This repository is intentionally built as a learning and portfolio project. It is simple, transparent, and easy to run locally. It is **not** a production-ready RAG system.
+This repository is intentionally simple, transparent, and easy to run locally. It is designed as a portfolio project, not a production-ready RAG platform.
 
-## What This Project Demonstrates
+## TL;DR Run Commands
 
-- Local document ingestion from TXT, PDF, and public URLs
-- Text chunking with overlap
-- Embedding generation with local Ollama models
-- Storage of chunks and embeddings in SQLite
-- Semantic retrieval with cosine similarity and top-k selection
-- Answer generation grounded in retrieved context
-- A simple Flask UI and a lightweight FastAPI interface
+1. Backend and web UI:
 
-## Tech Stack
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python app.py
+```
 
-- Python 3.11+
-- Flask (web UI)
-- FastAPI + Uvicorn (API)
-- SQLite (storage)
-- Ollama (local embeddings + local generation)
-- pypdf, requests
-- pytest, black
+2. API:
 
-## Architecture Overview
+```powershell
+uvicorn api:app --reload --port 8000
+```
 
-The app follows a small, explicit RAG pipeline:
+3. Open the app:
 
-1. Load a document (file or URL).
+```text
+http://127.0.0.1:5000
+http://127.0.0.1:8000/docs
+```
+
+## Screenshots
+
+### Home
+
+![Home](assets/screenshots/01-home.png)
+
+### DB overview
+
+![DB overview](assets/screenshots/02-db-overview.png)
+
+### Chunk detail
+
+![Chunk detail](assets/screenshots/03-db-chunks.png)
+
+## What this project demonstrates
+
+• Local document ingestion from TXT, PDF, and public URLs
+• Text chunking with overlap
+• Embedding generation with local Ollama models
+• Storage of chunks and embeddings in SQLite
+• Semantic retrieval with cosine similarity and top-k selection
+• Answer generation grounded in retrieved context
+• A simple Flask UI plus a lightweight FastAPI interface
+
+## Why this is a strong AI Engineering reference project
+
+• End-to-end RAG flow from ingestion to grounded answers
+• Provider abstraction through a local Ollama client
+• Defensive URL ingestion for safer demo usage
+• Deterministic tests for chunking, similarity, and document handling
+• A clean local demo that is easy to explain in interviews and portfolio reviews
+
+## Use case
+
+A developer uploads a policy document or points the app at a public URL. The app breaks the content into chunks, embeds those chunks, stores them in SQLite, and answers questions using the most relevant retrieved passages.
+
+This is a practical RAG demo, not a general-purpose knowledge base or enterprise search system.
+
+## Tech stack
+
+• Python 3.11+
+• Flask for the web UI
+• FastAPI + Uvicorn for the API
+• SQLite for persistence
+• Ollama for local embeddings and generation
+• pypdf and requests for document ingestion
+• pytest and black for testing and formatting
+
+## Architecture
+
+```text
+Browser / API client
+    |
+    v
+app.py or api.py
+    |
+    v
+RagService
+   |        |        |
+   |        |        +--> OllamaService
+   |        +------------> documentservice.py
+   +---------------------> database.py
+    |
+    v
+SQLite + local Ollama models
+```
+
+The flow is intentionally explicit:
+
+1. Load a document from upload or URL.
 2. Extract text.
-3. Split text into chunks.
+3. Split the text into chunks.
 4. Generate embeddings per chunk.
-5. Store chunks + embeddings in SQLite.
-6. Generate query embedding.
-7. Compute cosine similarity against stored chunks.
-8. Select top-k chunks.
-9. Generate final answer from selected context.
+5. Store chunks and embeddings in SQLite.
+6. Build a query embedding for the user question.
+7. Rank chunks by cosine similarity.
+8. Generate the answer from the top chunks.
 
-Core modules:
-
-- `documentservice.py`: text extraction and defensive URL ingestion
-- `ragservice.py`: chunking, retrieval, ranking, generation flow
-- `ollamaservice.py`: communication with Ollama API
-- `database.py`: SQLite schema and data access helpers
-- `app.py`: Flask UI routes
-- `api.py`: FastAPI endpoints for demo workflow
-
-## Project Structure
+## Project structure
 
 ```text
 rag-demo-app/
-+-- app.py
-+-- api.py
-+-- config.py
-+-- database.py
-+-- documentservice.py
-+-- ollamaservice.py
-+-- ragservice.py
-+-- requirements.txt
-+-- README.md
-+-- .gitignore
-+-- templates/
-�   +-- index.html
-+-- uploads/
-�   +-- .gitkeep
-+-- examples/
-�   +-- company_policy.txt
-+-- tests/
-    +-- test_chunking.py
-    +-- test_similarity.py
-    +-- test_documentservice.py
+├── app.py
+├── api.py
+├── config.py
+├── database.py
+├── documentservice.py
+├── ollamaservice.py
+├── ragservice.py
+├── requirements.txt
+├── README.md
+├── .env.example
+├── .github/
+│   └── workflows/
+│       └── tests.yml
+├── assets/
+│   └── screenshots/
+│       ├── 01-home.png
+│       ├── 02-db-overview.png
+│       └── 03-db-chunks.png
+├── examples/
+│   └── company_policy.txt
+├── templates/
+│   └── index.html
+├── tests/
+│   ├── test_chunking.py
+│   ├── test_documentservice.py
+│   └── test_similarity.py
+└── uploads/
 ```
 
-## Requirements
+## Quickstart
 
-- Python 3.11+
-- Ollama installed and running locally
-- At least one chat model and one embedding model available in Ollama
+### 1. Create and activate a virtual environment
 
-## Installation
+Windows PowerShell:
 
-```bash
+```powershell
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\Activate.ps1
+```
+
+### 2. Install dependencies
+
+```powershell
 pip install -r requirements.txt
 ```
 
-## Ollama Setup
+### 3. Configure environment
 
-Example model setup:
+Copy `.env.example` to `.env` if you want to override defaults such as the upload directory, DB path, or Ollama base URL.
 
-```bash
-ollama pull llama3.2
+### 4. Ensure Ollama is available
+
+Example setup:
+
+```powershell
+ollama pull qwen2.5:7b-instruct
 ollama pull nomic-embed-text
 ```
 
-Check local Ollama availability:
+### 5. Run the web UI
 
-```bash
-curl http://localhost:11434/api/tags
-```
-
-## Start Flask Web UI
-
-```bash
+```powershell
 python app.py
 ```
 
 Open:
 
-- `http://127.0.0.1:5000`
+```text
+http://127.0.0.1:5000
+```
 
-## Start FastAPI API
+### 6. Run the API
 
-```bash
+```powershell
 uvicorn api:app --reload --port 8000
 ```
 
 Open:
 
-- `http://127.0.0.1:8000/docs`
+```text
+http://127.0.0.1:8000/docs
+```
 
-## Typical Workflow
+## UI usage
 
-1. Start Ollama.
-2. Start Flask UI or FastAPI.
-3. Select chat/embedding models.
-4. Ingest document or URL.
-5. Ask a question.
-6. Review retrieved chunks and scores.
+The Flask UI lets you:
 
-## API Endpoints (Demo Scope)
+• upload a TXT or PDF document
+• ingest a public URL
+• switch chat and embedding models
+• ask a question against one or more indexed documents
+• inspect stored chunks in the SQLite view
 
-- `GET /api/health`
-- `GET /api/ollama/status`
-- `POST /api/ollama/chat-model`
-- `POST /api/ollama/embedding-model`
-- `GET /api/documents`
-- `POST /api/documents/url`
-- `POST /api/ask`
-- `DELETE /api/documents/{document_name}`
+## API overview
 
-Note: File upload via FastAPI is intentionally not implemented in this demo and is tracked as a future TODO.
+• `GET /api/health`
+• `GET /api/ollama/status`
+• `POST /api/ollama/chat-model`
+• `POST /api/ollama/embedding-model`
+• `GET /api/documents`
+• `POST /api/documents/url`
+• `POST /api/ask`
+• `DELETE /api/documents/{document_name}`
 
-## Example Document and Question
+## Example request
 
-Sample file:
+PowerShell example for the question-answering endpoint:
 
-- `examples/company_policy.txt`
+```powershell
+$body = @{
+  document_names = @("IBM_CIC_Germany_OnePager_Salim_Oussayfi.pdf")
+  question = "What is the main security requirement?"
+} | ConvertTo-Json
 
-Example question:
+Invoke-RestMethod -Uri http://127.0.0.1:8000/api/ask -Method Post -ContentType 'application/json' -Body $body | ConvertTo-Json -Depth 8
+```
 
-- `How often must employees complete security awareness training?`
+URL ingest example:
 
-Expected example answer:
+```powershell
+$body = @{ url = "https://example.com" } | ConvertTo-Json
+Invoke-RestMethod -Uri http://127.0.0.1:8000/api/documents/url -Method Post -ContentType 'application/json' -Body $body | ConvertTo-Json -Depth 8
+```
 
-- `Employees must complete security awareness training once per quarter.`
+## Testing
 
-## Screenshots
+```powershell
+pytest -q
+```
 
-Add screenshots here after running locally:
+The tests are designed to run without a live local model for the covered utility paths.
 
-- `[Placeholder] Flask home with model selection`
-- `[Placeholder] Ingestion success message`
-- `[Placeholder] Answer with retrieved chunks and scores`
-- `[Placeholder] FastAPI Swagger UI`
+## CI
+
+GitHub Actions runs the test suite on push and pull requests.
 
 ## Limitations
 
-- Demo-oriented architecture with simple linear retrieval in Python
-- No authentication or authorization
-- No multi-user isolation
-- Embeddings stored as JSON text in SQLite for readability, not scale
-- Basic error handling and no background processing
+• No authentication or authorization
+• No multi-user isolation
+• No background processing for larger ingests
+• SQLite only
+• Demo-first architecture, not a production RAG deployment
 
-## Security and Demo Notes
+## Portfolio positioning
 
-- This project is for local learning and demo usage only.
-- Do not deploy it as-is to production.
-- Flask debug mode should be enabled only for local development.
-- URL ingestion blocks local/private network targets and keeps request timeout and response size limits.
+This project complements a local ticket triage app and a log analysis app by showing a third pattern: document-grounded retrieval and answer generation.
 
-## Future Improvements
+Together, the three repos show different local LLM workflows for AI Engineering portfolios.
 
-- Add FastAPI file upload endpoint
-- Add async job queue for larger ingests
-- Add metadata filters and better retrieval controls
-- Add containerized setup (Docker)
-- Add CI for lint/test automation
+## License
+
+No explicit license file is included yet.
